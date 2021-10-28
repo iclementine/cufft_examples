@@ -1,5 +1,6 @@
-# pragma once
+#pragma once
 #include <iostream>
+
 #include "cufft.h"
 #include "cufftXt.h"
 
@@ -17,6 +18,8 @@ class CuFFTHandle {
   CuFFTHandle &operator=(const CuFFTHandle &) = delete;
 
   CuFFTHandle(CuFFTHandle &&other) : raw_handle(other.raw_handle) {
+    // 0 is a magic number for cufftHandle, if is the null value of cufftHandle
+    // which is always safe to be cufftDestroyed
     other.raw_handle = 0;
   }
 
@@ -29,10 +32,8 @@ class CuFFTHandle {
   };
 
   ~CuFFTHandle() {
-    if (true) {
-      std::cout << "Destroying cufftHandle " << raw_handle << std::endl;
-      cufftDestroy(raw_handle);
-    }
+    std::cout << "Destroying cufftHandle " << raw_handle << std::endl;
+    cufftDestroy(raw_handle);
   }
 
   cufftHandle &get() { return raw_handle; }

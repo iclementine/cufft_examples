@@ -1,15 +1,6 @@
-
-
 #pragma once
-#include <functional>
-#include <limits>
-#include <list>
-#include <vector>
-#include <memory>
-#include <mutex>
-#include <unordered_map>
-#include <utility>
-
+#include "cuda_utility.h"
+#include "cufft_utility.h"
 
 constexpr size_t CUFFT_MAX_PLAN_NUM = std::numeric_limits<size_t>::max();
 // The default max cache size chosen for CUDA version > 10 is arbitrary.
@@ -17,30 +8,26 @@ constexpr size_t CUFFT_MAX_PLAN_NUM = std::numeric_limits<size_t>::max();
 // default. Users can always configure it via cufft_set_plan_cache_max_size.
 constexpr size_t CUFFT_DEFAULT_CACHE_SIZE = 4096;
 
-
 class FFTConfigCache {
- public:
+public:
   using kv_t = typename std::pair<FFTConfigKey, FFTConfig>;
-  using map_t =
-      typename std::unordered_map<std::reference_wrapper<FFTConfigKey>,
-                                  typename std::list<kv_t>::iterator,
-                                  KeyHash<FFTConfigKey>,
-                                  KeyEqual<FFTConfigKey>>;
+  using map_t = typename std::unordered_map<
+      std::reference_wrapper<FFTConfigKey>, typename std::list<kv_t>::iterator,
+      KeyHash<FFTConfigKey>, KeyEqual<FFTConfigKey>>;
   using map_kkv_iter_t = typename map_t::iterator;
 
   FFTConfigCache() : FFTConfigCache(CUFFT_DEFAULT_CACHE_SIZE) {}
 
   explicit FFTConfigCache(int64_t max_size) { _set_max_size(max_size); }
 
-  FFTConfigCache(const FFTConfigCache& other) = delete;
-  FFTConfigCache& operator=(const FFTConfigCache& other) = delete;
+  FFTConfigCache(const FFTConfigCache &other) = delete;
+  FFTConfigCache &operator=(const FFTConfigCache &other) = delete;
 
-  FFTConfigCache(FFTConfigCache&& other) noexcept
+  FFTConfigCache(FFTConfigCache &&other) noexcept
       : _usage_list(std::move(other._usage_list)),
-        _cache_map(std::move(other._cache_map)),
-        _max_size(other._max_size) {}
+        _cache_map(std::move(other._cache_map)), _max_size(other._max_size) {}
 
-  FFTConfigCache& operator=(FFTConfigCache&& other) noexcept {
+  FFTConfigCache &operator=(FFTConfigCache &&other) noexcept {
     _usage_list = std::move(other._usage_list);
     _cache_map = std::move(other._cache_map);
     _max_size = other._max_size;
@@ -49,14 +36,7 @@ class FFTConfigCache {
 
   // If key is in this cache, return the cached config. Otherwise, emplace the
   // config in this cache and return it.
-  FFTConfig& lookup(FFTConfigKey params) {
-    PADDLE_ENFORCE_GT(_max_size,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The max size of FFTConfigCache must be great than 0,"
-                          "But received is [%d]",
-                          _max_size));
-
+  FFTConfig &lookup(FFTConfigKey params) {
     map_kkv_iter_t map_it = _cache_map.find(params);
     // Hit, put to list front
     if (map_it != _cache_map.end()) {
@@ -108,25 +88,12 @@ class FFTConfigCache {
 
   std::mutex mutex;
 
- private:
+private:
   // Only sets size and does value check. Does not resize the data structures.
   void _set_max_size(int64_t new_size) {
     // We check that 0 <= new_size <= CUFFT_MAX_PLAN_NUM here. Since
     // CUFFT_MAX_PLAN_NUM is of type size_t, we need to do non-negativity check
     // first.
-    PADDLE_ENFORCE_GE(
-        new_size,
-        0,
-        phi::errors::InvalidArgument(
-            "cuFFT plan cache size must be non-negative, But received is [%d]",
-            new_size));
-    PADDLE_ENFORCE_LE(new_size,
-                      CUFFT_MAX_PLAN_NUM,
-                      phi::errors::InvalidArgument(
-                          "cuFFT plan cache size can not be larger than [%d], "
-                          "But received is [%d]",
-                          CUFFT_MAX_PLAN_NUM,
-                          new_size));
     _max_size = static_cast<size_t>(new_size);
   }
 
@@ -138,7 +105,7 @@ class FFTConfigCache {
 static std::vector<std::unique_ptr<FFTConfigCache>> plan_caches;
 static std::mutex plan_caches_mutex;
 
-static inline FFTConfigCache& get_fft_plan_cache(int64_t device_index) {
+static inline FFTConfigCache &get_fft_plan_cache(int64_t device_index) {
   std::lock_guard<std::mutex> guard(plan_caches_mutex);
 
   if (device_index >= plan_caches.size()) {
@@ -151,6 +118,3 @@ static inline FFTConfigCache& get_fft_plan_cache(int64_t device_index) {
 
   return *plan_caches[device_index];
 }
-}  // namespace detail
-}  // namespace funcs
-}  // namespace phi

@@ -2,16 +2,17 @@
 #include "cuda_utility.h"
 #include "cufft.h"
 #include "cufftXt.h"
-#include <iostream>
+#include <cstring>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <list>
-#include <vector>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
-#include <cstring>
+#include <vector>
+#include "dynload.h"
 
 class CuFFTHandle {
 private:
@@ -19,29 +20,18 @@ private:
 
 public:
   CuFFTHandle() {
-    CUFFT_CHECK(cufftCreate(&raw_handle));
+    CUFFT_CHECK(dyn::cufftCreate(&raw_handle));
     std::cout << "Created cufftHandle " << raw_handle << std::endl;
   }
 
   CuFFTHandle(const CuFFTHandle &) = delete;
   CuFFTHandle &operator=(const CuFFTHandle &) = delete;
-
-  CuFFTHandle(CuFFTHandle &&other) : raw_handle(other.raw_handle) {
-    // 0 is a magic number for cufftHandle, if is the null value of cufftHandle
-    // which is always safe to be cufftDestroyed
-    other.raw_handle = -1;
-  }
-
-  CuFFTHandle &operator=(CuFFTHandle &&other) {
-    std::swap(raw_handle, other.raw_handle);
-    return *this;
-  };
+  CuFFTHandle(CuFFTHandle &&other) = delete;
+  CuFFTHandle &operator=(CuFFTHandle &&other) = delete;
 
   ~CuFFTHandle() {
-    if (raw_handle != -1) {
-      std::cout << "Destroying cufftHandle " << raw_handle << std::endl;
-      CUFFT_CHECK(cufftDestroy(raw_handle));
-    }
+    std::cout << "Destroying cufftHandle " << raw_handle << std::endl;
+    CUFFT_CHECK(dyn::cufftDestroy(raw_handle));
   }
 
   cufftHandle &get() { return raw_handle; }
@@ -175,8 +165,8 @@ public:
     }
 
     // disable auto allocation of workspace to use allocator from the framework
-    CUFFT_CHECK(cufftSetAutoAllocation(plan(), /* autoAllocate */ 0));
-    CUFFT_CHECK(cufftXtMakePlanMany(plan(), signal_ndim, signal_sizes.data(),
+    CUFFT_CHECK(dyn::cufftSetAutoAllocation(plan(), /* autoAllocate */ 0));
+    CUFFT_CHECK(dyn::cufftXtMakePlanMany(plan(), signal_ndim, signal_sizes.data(),
                                     /* inembed */ nullptr,
                                     /* base_istride */ 1L,
                                     /* idist */ 1L, itype,

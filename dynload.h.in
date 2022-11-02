@@ -1,0 +1,107 @@
+#pragma once
+
+#include <cassert>
+#include <cufft.h>
+#include <cufftXt.h>
+#include <mutex> // NOLINT
+#include <string>
+#include <dlfcn.h>
+
+#cmakedefine CUDAToolkit_LIBRARY_DIR "@CUDAToolkit_LIBRARY_DIR@"
+
+namespace dyn {
+
+std::once_flag cufft_dso_flag;
+void *cufft_dso_handle;
+
+void *GetCUFFTDsoHandle() {
+  std::string libdir = CUDAToolkit_LIBRARY_DIR;
+  std::string dso_path = libdir + "/libcufft.so";
+  return dlopen(dso_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+}
+
+bool HasCUFFT() {
+  std::call_once(cufft_dso_flag,
+                 []() { cufft_dso_handle = GetCUFFTDsoHandle(); });
+  return cufft_dso_handle != nullptr;
+}
+
+void EnforceCUFFTLoaded(const char *fn_name) { assert(fn_name != nullptr); }
+
+#define DECLARE_TYPE(__name, ...) decltype(__name(__VA_ARGS__))
+
+#define DECLARE_DYNAMIC_LOAD_CUFFT_WRAP(__name)                                \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {           \
+      using cufft_func = decltype(&::__name);                                  \
+      std::call_once(cufft_dso_flag,                                           \
+                     []() { cufft_dso_handle = GetCUFFTDsoHandle(); });        \
+      EnforceCUFFTLoaded(#__name);                                             \
+      static void *p_##__name = dlsym(cufft_dso_handle, #__name);              \
+      return reinterpret_cast<cufft_func>(p_##__name)(args...);                \
+    }                                                                          \
+  };                                                                           \
+  struct DynLoad__##__name __name
+
+/**
+ * include all needed cufft functions in HPPL
+ * different cufft version has different interfaces
+ **/
+#define CUFFT_FFT_ROUTINE_EACH(__macro)                                        \
+  __macro(cufftPlan1d);                                                        \
+  __macro(cufftPlan2d);                                                        \
+  __macro(cufftPlan3d);                                                        \
+  __macro(cufftPlanMany);                                                      \
+  __macro(cufftMakePlan1d);                                                    \
+  __macro(cufftMakePlan2d);                                                    \
+  __macro(cufftMakePlan3d);                                                    \
+  __macro(cufftMakePlanMany);                                                  \
+  __macro(cufftMakePlanMany64);                                                \
+  __macro(cufftGetSizeMany64);                                                 \
+  __macro(cufftEstimate1d);                                                    \
+  __macro(cufftEstimate2d);                                                    \
+  __macro(cufftEstimate3d);                                                    \
+  __macro(cufftEstimateMany);                                                  \
+  __macro(cufftCreate);                                                        \
+  __macro(cufftGetSize1d);                                                     \
+  __macro(cufftGetSize2d);                                                     \
+  __macro(cufftGetSize3d);                                                     \
+  __macro(cufftGetSizeMany);                                                   \
+  __macro(cufftGetSize);                                                       \
+  __macro(cufftSetWorkArea);                                                   \
+  __macro(cufftSetAutoAllocation);                                             \
+  __macro(cufftExecC2C);                                                       \
+  __macro(cufftExecR2C);                                                       \
+  __macro(cufftExecC2R);                                                       \
+  __macro(cufftExecZ2Z);                                                       \
+  __macro(cufftExecD2Z);                                                       \
+  __macro(cufftExecZ2D);                                                       \
+  __macro(cufftSetStream);                                                     \
+  __macro(cufftDestroy);                                                       \
+  __macro(cufftGetVersion);                                                    \
+  __macro(cufftGetProperty);                                                   \
+  __macro(cufftXtSetGPUs);                                                     \
+  __macro(cufftXtMalloc);                                                      \
+  __macro(cufftXtMemcpy);                                                      \
+  __macro(cufftXtFree);                                                        \
+  __macro(cufftXtSetWorkArea);                                                 \
+  __macro(cufftXtExecDescriptorC2C);                                           \
+  __macro(cufftXtExecDescriptorR2C);                                           \
+  __macro(cufftXtExecDescriptorC2R);                                           \
+  __macro(cufftXtExecDescriptorZ2Z);                                           \
+  __macro(cufftXtExecDescriptorD2Z);                                           \
+  __macro(cufftXtExecDescriptorZ2D);                                           \
+  __macro(cufftXtQueryPlan);                                                   \
+  __macro(cufftXtSetCallback);                                                 \
+  __macro(cufftXtClearCallback);                                               \
+  __macro(cufftXtSetCallbackSharedSize);                                       \
+  __macro(cufftXtMakePlanMany);                                                \
+  __macro(cufftXtGetSizeMany);                                                 \
+  __macro(cufftXtExec);                                                        \
+  __macro(cufftXtExecDescriptor);                                              \
+  __macro(cufftXtSetWorkAreaPolicy);
+
+CUFFT_FFT_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUFFT_WRAP)
+
+} // namespace dyn

@@ -1,4 +1,4 @@
-#include "cufft_handle.h"
+#include "cufft_utility.h"
 #include <cufft.h>
 #include <cufftXt.h>
 #include <iostream>
@@ -11,6 +11,7 @@
 #include <cuda_runtime.h>
 #include <thrust/device_vector.h>
 #include <array>
+#include "dynload.h"
 
 template <typename T>
 std::ostream& operator<< (std::ostream& os, const std::complex<T>& x) {
@@ -47,7 +48,7 @@ std::ostream& operator<< (std::ostream& os, const thrust::device_vector<T> v) {
 
 int main(){
     int version;
-    cufftGetVersion(&version);
+    dyn::cufftGetVersion(&version);
     std::cout << "cufft version: " << version << std::endl;
     std::vector<CuFFTHandle> plans(10);
     CuFFTHandle& a = plans[0];
@@ -75,22 +76,22 @@ int main(){
         r_numel * sizeof(float), 
         cudaMemcpyHostToDevice);
 
-    cufftXtMakePlanMany(
+    dyn::cufftXtMakePlanMany(
         a.get(), 2, r_shape.data() + 2, 
         nullptr, 1, 1, CUDA_R_32F, 
         nullptr, 1, 1, CUDA_C_32F, 
         4, &work_size, CUDA_C_32F);
-    cufftSetAutoAllocation(a.get(), 0);
+    dyn::cufftSetAutoAllocation(a.get(), 0);
     
     for (int i = 0; i < 10; i++){
         thrust::device_vector<cufftComplex> dy(c_numel);
         void* ws;
         cudaMalloc(&ws, work_size);
-        cufftSetWorkArea(a.get(), ws);
+        dyn::cufftSetWorkArea(a.get(), ws);
         cudaStream_t s;
         cudaStreamCreate(&s);
-        cufftSetStream(a.get(), s);
-        cufftXtExec(a.get(), 
+        dyn::cufftSetStream(a.get(), s);
+        dyn::cufftXtExec(a.get(), 
                     thrust::raw_pointer_cast(dx.data()), 
                     thrust::raw_pointer_cast(dy.data()),
                     CUFFT_FORWARD);

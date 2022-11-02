@@ -36,11 +36,11 @@ int main() {
     // renew workspace
     void *workspace = nullptr;
     CUDA_CHECK(cudaMalloc(&workspace, config.workspace_size()));
-    CUFFT_CHECK(cufftSetWorkArea(config.plan(), workspace));
+    CUFFT_CHECK(dyn::cufftSetWorkArea(config.plan(), workspace));
 
     // ============================Execution==============================
     CUFFT_CHECK(
-        cufftXtExec(config.plan(), y_on_device, D_on_device, CUFFT_FORWARD));
+        dyn::cufftXtExec(config.plan(), y_on_device, D_on_device, CUFFT_FORWARD));
 
     // free input & output & workspace, copy output back to host
     CUDA_CHECK(cudaMemcpy(D.data(), D_on_device, D_size_in_bytes,

@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "dynload.h"
 
 class CuFFTHandle {
 private:
@@ -20,7 +19,7 @@ private:
 
 public:
   CuFFTHandle() {
-    CUFFT_CHECK(dyn::cufftCreate(&raw_handle));
+    CUFFT_CHECK(cufftCreate(&raw_handle));
     std::cout << "Created cufftHandle " << raw_handle << std::endl;
   }
 
@@ -31,7 +30,7 @@ public:
 
   ~CuFFTHandle() {
     std::cout << "Destroying cufftHandle " << raw_handle << std::endl;
-    CUFFT_CHECK(dyn::cufftDestroy(raw_handle));
+    CUFFT_CHECK(cufftDestroy(raw_handle));
   }
 
   cufftHandle &get() { return raw_handle; }
@@ -165,8 +164,8 @@ public:
     }
 
     // disable auto allocation of workspace to use allocator from the framework
-    CUFFT_CHECK(dyn::cufftSetAutoAllocation(plan(), /* autoAllocate */ 0));
-    CUFFT_CHECK(dyn::cufftXtMakePlanMany(plan(), signal_ndim, signal_sizes.data(),
+    CUFFT_CHECK(cufftSetAutoAllocation(plan(), /* autoAllocate */ 0));
+    CUFFT_CHECK(cufftXtMakePlanMany(plan(), signal_ndim, signal_sizes.data(),
                                     /* inembed */ nullptr,
                                     /* base_istride */ 1L,
                                     /* idist */ 1L, itype,

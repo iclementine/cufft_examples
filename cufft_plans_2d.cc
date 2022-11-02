@@ -9,7 +9,7 @@
 
 int main() {
   // =======================cufft plan================================
-  std::vector<int64_t> input_sizes {192, 28, 107};
+  std::vector<int64_t> input_sizes{192, 28, 107};
   FFTConfig config(input_sizes, FFTTransformType::R2C, DataType::f4);
 
   for (int i = 0; i < 10; i++) {
@@ -36,11 +36,11 @@ int main() {
     // renew workspace
     void *workspace = nullptr;
     CUDA_CHECK(cudaMalloc(&workspace, config.workspace_size()));
-    CUFFT_CHECK(dyn::cufftSetWorkArea(config.plan(), workspace));
+    CUFFT_CHECK(cufftSetWorkArea(config.plan(), workspace));
 
     // ============================Execution==============================
     CUFFT_CHECK(
-        dyn::cufftXtExec(config.plan(), y_on_device, D_on_device, CUFFT_FORWARD));
+        cufftXtExec(config.plan(), y_on_device, D_on_device, CUFFT_FORWARD));
 
     // free input & output & workspace, copy output back to host
     CUDA_CHECK(cudaMemcpy(D.data(), D_on_device, D_size_in_bytes,

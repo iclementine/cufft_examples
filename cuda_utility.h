@@ -1,6 +1,6 @@
 #pragma once
-#include "cufft.h"
 #include "cuda_runtime.h"
+#include "cufft.h"
 
 static const char *cufftGetErrorString(cufftResult error) {
   switch (error) {
@@ -47,5 +47,3 @@ static const char *cufftGetErrorString(cufftResult error) {
       exit(1);                                                                 \
     }                                                                          \
   }
-
-

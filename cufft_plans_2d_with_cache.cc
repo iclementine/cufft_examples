@@ -4,13 +4,18 @@
 #include "cufftXt.h"
 #include "cufft_utility.h"
 #include "lru_cache.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 #include <array>
 #include <complex>
 #include <iostream>
+#include <random>
+#include <vector>
 
 int main() {
   // =======================cufft plan================================
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dis(1.0, 2.0);
+
   for (int i = 0; i < 10; i++) {
     // ---------make fft config key----------
     std::vector<int64_t> input_sizes{2, 3, 4};
@@ -36,8 +41,10 @@ int main() {
     }
 
     // input in host
-    Eigen::Tensor<float, 3> y(input_sizes[0], input_sizes[1], input_sizes[2]);
-    y.setRandom();
+    std::vector<float> y(input_sizes[0] * input_sizes[1] * input_sizes[2], 0.0);
+    for (auto &item : y) {
+      item = dis(gen);
+    }
     std::cout << "total elements: " << y.size() << std::endl;
     size_t size_in_bytes = y.size() * sizeof(float);
 
@@ -48,9 +55,8 @@ int main() {
                           cudaMemcpyHostToDevice));
 
     // output on device and output for host
-    Eigen::Tensor<std::complex<float>, 3> D(output_sizes[0], output_sizes[1],
-                                            output_sizes[2]);
-    D.setZero();
+    std::vector<std::complex<float>> D(
+        output_sizes[0] * output_sizes[1] * output_sizes[2], 0.0);
     size_t D_size_in_bytes = D.size() * sizeof(std::complex<float>);
     void *D_on_device = nullptr;
     CUDA_CHECK(cudaMalloc(&D_on_device, D_size_in_bytes));

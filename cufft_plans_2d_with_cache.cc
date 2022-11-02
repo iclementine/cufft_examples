@@ -4,24 +4,20 @@
 #include "cufftXt.h"
 #include "cufft_utility.h"
 #include "lru_cache.h"
-#include "unsupported/Eigen/CXX11/Tensor"
-#include <array>
 #include <complex>
 #include <iostream>
+#include <random>
+#include <vector>
 
 int main() {
   // =======================cufft plan================================
-  std::random_device
-      rd; // Will be used to obtain a seed for the random number engine
-  std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<> distrib(1, 500);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dis(-2.0, 2.0);
 
   for (int i = 0; i < 10; i++) {
     // ---------make fft config key----------
-    int64_t b = distrib(gen);
-    int64_t s1 = distrib(gen);
-    int64_t s2 = distrib(gen);
-    std::vector<int64_t> input_sizes{b, s1, s2};
+    std::vector<int64_t> input_sizes{2, 3, 107};
     std::vector<int64_t> output_sizes{input_sizes[0], input_sizes[1],
                                       input_sizes[2] / 2 + 1};
     std::vector<int64_t> fft_sizes{input_sizes[1], input_sizes[2]};
@@ -30,9 +26,8 @@ int main() {
 
     // ---------get a config either by creating or using cached config----------
     FFTConfig *config = nullptr;
-    std::unique_ptr<FFTConfig> config_ =
-        nullptr; // to hold it if not using cache because it cannot be copied or
-                 // assigned
+    // to hold it if not using cache because it cannot be copied or assigned
+    std::unique_ptr<FFTConfig> config_ = nullptr;
     if (true) {
       FFTConfigCache &cache = get_fft_plan_cache(/*device_id*/ 0);
       std::unique_lock<std::mutex> guard(cache.mutex, std::defer_lock);
@@ -44,8 +39,10 @@ int main() {
     }
 
     // input in host
-    Eigen::Tensor<float, 3> y(input_sizes[0], input_sizes[1], input_sizes[2]);
-    y.setRandom();
+    std::vector<float> y(input_sizes[0] * input_sizes[1] * input_sizes[2], 0.0);
+    for (auto &item : y) {
+      item = dis(gen);
+    }
     std::cout << "total elements: " << y.size() << std::endl;
     size_t size_in_bytes = y.size() * sizeof(float);
 
@@ -56,9 +53,8 @@ int main() {
                           cudaMemcpyHostToDevice));
 
     // output on device and output for host
-    Eigen::Tensor<std::complex<float>, 3> D(output_sizes[0], output_sizes[1],
-                                            output_sizes[2]);
-    D.setZero();
+    std::vector<std::complex<float>> D(
+        output_sizes[0] * output_sizes[1] * output_sizes[2], 0.0);
     size_t D_size_in_bytes = D.size() * sizeof(std::complex<float>);
     void *D_on_device = nullptr;
     CUDA_CHECK(cudaMalloc(&D_on_device, D_size_in_bytes));

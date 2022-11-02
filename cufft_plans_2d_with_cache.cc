@@ -11,17 +11,9 @@
 
 int main() {
   // =======================cufft plan================================
-  std::random_device
-      rd; // Will be used to obtain a seed for the random number engine
-  std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<> distrib(1, 500);
-
   for (int i = 0; i < 10; i++) {
     // ---------make fft config key----------
-    int64_t b = distrib(gen);
-    int64_t s1 = distrib(gen);
-    int64_t s2 = distrib(gen);
-    std::vector<int64_t> input_sizes{b, s1, s2};
+    std::vector<int64_t> input_sizes{2, 3, 4};
     std::vector<int64_t> output_sizes{input_sizes[0], input_sizes[1],
                                       input_sizes[2] / 2 + 1};
     std::vector<int64_t> fft_sizes{input_sizes[1], input_sizes[2]};

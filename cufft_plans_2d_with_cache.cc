@@ -18,7 +18,7 @@ int main() {
 
   for (int i = 0; i < 10; i++) {
     // ---------make fft config key----------
-    std::vector<int64_t> input_sizes{2, 3, 4};
+    std::vector<int64_t> input_sizes{2, 3, 107};
     std::vector<int64_t> output_sizes{input_sizes[0], input_sizes[1],
                                       input_sizes[2] / 2 + 1};
     std::vector<int64_t> fft_sizes{input_sizes[1], input_sizes[2]};
